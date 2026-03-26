@@ -1,11 +1,602 @@
 ---
-import Welcome from '../components/Welcome.astro';
+import { elements, getElementsByCategory, getDisplayType, VOID_ELEMENTS, type ContentCategory, type DisplayType } from '../data/html-nesting';
 import Layout from '../layouts/Layout.astro';
+import PixelHeart from '../components/PixelHeart.astro';
+import { fetchSponsors } from '../lib/sponsors';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const sponsors = await fetchSponsors();
+
+const categoryDefs = [
+  {
+    id: 'flow' as ContentCategory,
+    name: 'Flow content',
+    desc: 'The broadest category. Most elements that can appear inside <body> are flow content. This includes block-level elements, inline elements, and everything in between.',
+    mdn: 'https://developer.mozilla.org/en-US/docs/Web/HTML/Content_categories#flow_content',
+  },
+  {
+    id: 'phrasing' as ContentCategory,
+    name: 'Phrasing content',
+    desc: 'Text and inline-level elements. A subset of flow content. Elements like <p>, <h1>, and <button> only accept phrasing content as children.',
+    mdn: 'https://developer.mozilla.org/en-US/docs/Web/HTML/Content_categories#phrasing_content',
+  },
+  {
+    id: 'interactive' as ContentCategory,
+    name: 'Interactive content',
+    desc: 'Elements designed for user interaction. An important rule: interactive content cannot be nested inside other interactive content (e.g. no <button> inside <a>).',
+    mdn: 'https://developer.mozilla.org/en-US/docs/Web/HTML/Content_categories#interactive_content',
+  },
+  {
+    id: 'embedded' as ContentCategory,
+    name: 'Embedded content',
+    desc: 'Elements that import external resources or insert content from another markup language into the document.',
+    mdn: 'https://developer.mozilla.org/en-US/docs/Web/HTML/Content_categories#embedded_content',
+  },
+  {
+    id: 'heading' as ContentCategory,
+    name: 'Heading content',
+    desc: 'Elements that define the title of a section. These are restricted from appearing inside elements like <address> or <dt>.',
+    mdn: 'https://developer.mozilla.org/en-US/docs/Web/HTML/Content_categories#heading_content',
+  },
+  {
+    id: 'sectioning' as ContentCategory,
+    name: 'Sectioning content',
+    desc: 'Elements that create a section in the document outline, defining the scope of <header> and <footer> elements.',
+    mdn: 'https://developer.mozilla.org/en-US/docs/Web/HTML/Content_categories#sectioning_content',
+  },
+];
+
+const displayGroups: { type: DisplayType; label: string; color: string }[] = [
+  { type: 'block',        label: 'Block',           color: '#c2410c' },
+  { type: 'inline',       label: 'Inline',          color: '#0369a1' },
+  { type: 'inline-block', label: 'Inline replaced', color: '#7c3aed' },
+  { type: 'list-item',    label: 'List item',        color: '#b45309' },
+  { type: 'table',        label: 'Table',            color: '#0f766e' },
+  { type: 'none',         label: 'Hidden',           color: '#78716c' },
+];
+
+function groupByDisplay(tags: string[]) {
+  return displayGroups
+    .map(g => ({ ...g, tags: tags.filter(t => getDisplayType(t) === g.type) }))
+    .filter(g => g.tags.length > 0);
+}
 ---
 
 <Layout>
-	<Welcome />
+  <div class="min-h-screen bg-stone-50 text-stone-900 font-sans antialiased">
+    <main class="max-w-[680px] mx-auto px-5 py-14 md:py-24">
+
+      <!-- Hero -->
+      <header class="text-center mb-14">
+        <h1 class="font-serif text-5xl md:text-[3.5rem] leading-tight tracking-tight mb-3 text-stone-900">
+          Can I Wrap?
+        </h1>
+        <p class="text-stone-400 text-lg font-light">
+          Can you nest an HTML element inside another?
+        </p>
+      </header>
+
+      <!-- Selector -->
+      <div class="selector-grid mb-4" id="selector">
+        <div class="relative">
+          <label for="child-input" class="block text-[11px] uppercase tracking-[0.1em] text-stone-400 mb-2 font-medium">
+            Child
+          </label>
+          <div class="tag-input-wrapper" id="child-wrapper">
+            <span class="bracket">&lt;</span>
+            <input
+              type="text"
+              id="child-input"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded="false"
+              aria-controls="child-dropdown"
+              placeholder="button"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+            />
+            <span class="bracket">&gt;</span>
+          </div>
+          <div id="child-dropdown" role="listbox" aria-label="Child element suggestions" class="dropdown hidden"></div>
+        </div>
+
+        <div class="flex flex-col items-center justify-end pb-3 gap-1">
+          <span class="text-stone-300 text-sm select-none font-light">inside</span>
+          <button id="swap-btn" class="swap-btn" title="Swap elements" aria-label="Swap child and parent elements">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 10h-16l5.5 -6" /><path d="M4 14h16l-5.5 6" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="relative">
+          <label for="parent-input" class="block text-[11px] uppercase tracking-[0.1em] text-stone-400 mb-2 font-medium">
+            Parent
+          </label>
+          <div class="tag-input-wrapper" id="parent-wrapper">
+            <span class="bracket">&lt;</span>
+            <input
+              type="text"
+              id="parent-input"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded="false"
+              aria-controls="parent-dropdown"
+              placeholder="a"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+            />
+            <span class="bracket">&gt;</span>
+          </div>
+          <div id="parent-dropdown" role="listbox" aria-label="Parent element suggestions" class="dropdown hidden"></div>
+        </div>
+      </div>
+
+      <!-- Reset -->
+      <div class="flex justify-end">
+        <button id="reset-btn" class="reset-btn hidden" type="button" aria-label="Clear selection">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+          Clear
+        </button>
+      </div>
+
+      <!-- Result -->
+      <div id="result" class="mb-14" aria-live="polite"></div>
+
+      <!-- Popular checks -->
+      <section class="mb-16">
+        <h2 class="text-[11px] uppercase tracking-[0.1em] text-stone-400 mb-4 font-medium">
+          Popular checks
+        </h2>
+        <div class="flex flex-wrap gap-2" id="popular-pills">
+          <button class="pill" data-check="div,span">div → span</button>
+          <button class="pill" data-check="a,button">a → button</button>
+          <button class="pill" data-check="button,a">button → a</button>
+          <button class="pill" data-check="p,p">p → p</button>
+          <button class="pill" data-check="ul,li">ul → li</button>
+          <button class="pill" data-check="div,p">div → p</button>
+          <button class="pill" data-check="button,button">button → button</button>
+          <button class="pill" data-check="img,button">img → button</button>
+          <button class="pill" data-check="h1,p">h1 → p</button>
+          <button class="pill" data-check="span,div">span → div</button>
+          <button class="pill" data-check="form,form">form → form</button>
+          <button class="pill" data-check="a,a">a → a</button>
+          <button class="pill" data-check="li,div">li → div</button>
+          <button class="pill" data-check="div,a">div → a</button>
+          <button class="pill" data-check="input,label">input → label</button>
+          <button class="pill" data-check="td,div">td → div</button>
+        </div>
+      </section>
+
+      <!-- Content categories -->
+      <section class="border-t border-stone-200 pt-10" id="categories">
+        <h2 class="font-serif text-2xl mb-2 text-stone-800">Content categories</h2>
+        <p class="text-stone-400 text-[15px] mb-8 leading-relaxed">
+          Every HTML element belongs to zero or more content categories that define where it can appear and what it can contain.
+          Each element's <strong class="text-stone-500 font-medium">content model</strong> specifies which categories it accepts as children.
+          <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Content_categories" target="_blank" rel="noopener" class="text-stone-500 underline underline-offset-2 decoration-stone-300 hover:decoration-stone-500 transition-colors">Learn more on MDN →</a>
+        </p>
+
+        <div class="space-y-6">
+          {categoryDefs.map((cat) => {
+            const tags = getElementsByCategory(cat.id);
+            const groups = groupByDisplay(tags);
+            return (
+              <section id={cat.id} class="cat-section">
+                <div class="cat-header">
+                  <h3 class="cat-title">
+                    <a href={cat.mdn} target="_blank" rel="noopener">{cat.name} <span class="cat-count">{tags.length}</span></a>
+                  </h3>
+                </div>
+                <p class="cat-desc">{cat.desc}</p>
+                <div class="cat-groups">
+                  {groups.map((group) => (
+                    <div class="cat-group">
+                      <span class="cat-group-label" style={`--label-color: ${group.color}`}>{group.label}</span>
+                      <div class="cat-group-tags">
+                        {group.tags.map((tag) => (
+                          <button
+                            class="cat-tag"
+                            data-child={tag}
+                            data-tip={`${elements[tag].desc}${VOID_ELEMENTS.has(tag) ? ' · void element' : ''}`}
+                          >
+                            &lt;{tag}&gt;{VOID_ELEMENTS.has(tag) && <span class="void-dot" title="Void element" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="mt-12 pt-8 border-t border-stone-200 text-center hero-reveal" style="animation-delay: 400ms;">
+        <p class="hero-footer-text text-[0.6875rem] text-zinc-400 mb-4">
+          Built by <a href="https://midu.dev" class="hero-footer-link text-zinc-600 font-semibold hover:text-black transition-colors no-underline">midudev</a> with the support of
+        </p>
+
+        {sponsors.length > 0 && (
+          <div class="flex items-center justify-center -space-x-1.5 mb-4">
+            {sponsors.map((s, i) => (
+              <a
+                href={`https://github.com/${s.login}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="sponsor-avatar relative hover:z-10"
+                style={`--i: ${i}`}
+              >
+                <img
+                  src={`https://avatars.githubusercontent.com/u/${s.id}?s=64`}
+                  alt={s.login}
+                  width="32"
+                  height="32"
+                  class="size-8 rounded-full border-2 border-white shadow-sm"
+                  loading="lazy"
+                />
+                <span class="sponsor-tip">@{s.login}</span>
+              </a>
+            ))}
+
+            <a
+              href="https://github.com/sponsors/midudev"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="hero-add-sponsor relative hover:z-10 transition-transform hover:scale-110 flex items-center justify-center size-8 rounded-full border-2 border-dashed border-zinc-300 bg-zinc-50 text-zinc-400 hover:border-zinc-400 hover:text-zinc-600"
+              title="Support this project"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
+            </a>
+          </div>
+        )}
+
+        <a
+          href="https://github.com/sponsors/midudev"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 text-[0.6875rem] text-zinc-400 hover:text-pink-600 transition-colors no-underline group"
+        >
+          <PixelHeart class="w-3.5 h-[11px]" />
+          Support this project on GitHub Sponsors
+        </a>
+
+        <p class="mt-4 text-[0.625rem] text-stone-400">
+          Data sourced from the
+          <a href="https://html.spec.whatwg.org/multipage/" target="_blank" rel="noopener" class="underline underline-offset-2 hover:text-stone-600 transition-colors">HTML Living Standard</a>
+          and
+          <a href="https://developer.mozilla.org/en-US/docs/Web/HTML" target="_blank" rel="noopener" class="underline underline-offset-2 hover:text-stone-600 transition-colors">MDN Web Docs</a>.
+        </p>
+      </footer>
+
+    </main>
+  </div>
 </Layout>
+
+<style>
+  .selector-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 0.75rem;
+    align-items: end;
+  }
+
+  @media (max-width: 520px) {
+    .selector-grid {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+    .selector-grid > div:nth-child(2) {
+      flex-direction: row;
+      padding-top: 0.25rem;
+      padding-bottom: 0.25rem;
+    }
+  }
+
+  .tag-input-wrapper {
+    display: flex;
+    align-items: center;
+    background: white;
+    border: 1px solid #e7e5e4;
+    border-radius: 0.75rem;
+    padding: 0.65rem 0.85rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    gap: 0.125rem;
+  }
+
+  .tag-input-wrapper:focus-within {
+    border-color: #a8a29e;
+    box-shadow: 0 0 0 3px rgba(168, 162, 158, 0.08);
+  }
+
+  .tag-input-wrapper.has-value {
+    border-color: #78716c;
+  }
+
+  .bracket {
+    font-family: var(--font-mono);
+    color: #a8a29e;
+    font-size: 1.1rem;
+    line-height: 1;
+    user-select: none;
+    transition: color 0.15s;
+  }
+
+  .tag-input-wrapper.has-value .bracket {
+    color: #57534e;
+  }
+
+  .tag-input-wrapper input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-family: var(--font-mono);
+    font-size: 1.05rem;
+    background: transparent;
+    min-width: 0;
+    color: #1c1917;
+    padding: 0;
+  }
+
+  .tag-input-wrapper input::placeholder {
+    color: #d6d3d1;
+  }
+
+  .dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: #1c1917;
+    border: 1px solid #292524;
+    border-radius: 0.75rem;
+    margin-top: 0.35rem;
+    max-height: 280px;
+    overflow-y: auto;
+    box-shadow: 0 16px 48px -8px rgba(0, 0, 0, 0.3), 0 8px 16px -4px rgba(0, 0, 0, 0.2);
+    overscroll-behavior: contain;
+    padding: 0.35rem;
+    scrollbar-width: thin;
+    scrollbar-color: #44403c #1c1917;
+  }
+
+  .dropdown.hidden {
+    display: none;
+  }
+
+  .swap-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    border: 1px solid #e7e5e4;
+    background: white;
+    color: #a8a29e;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .swap-btn:hover {
+    background: #fafaf9;
+    color: #57534e;
+    border-color: #a8a29e;
+  }
+
+  .swap-btn svg {
+    transition: transform 0.3s ease;
+  }
+
+  .pill {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 2rem;
+    border: 1px solid #e7e5e4;
+    background: white;
+    color: #57534e;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .pill:hover {
+    background: #1c1917;
+    color: white;
+    border-color: #1c1917;
+  }
+
+  .reset-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: #78716c;
+    background: none;
+    border: 1px solid #e7e5e4;
+    border-radius: 0.375rem;
+    padding: 0.3rem 0.65rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .reset-btn:hover {
+    color: #991b1b;
+    border-color: #fca5a5;
+    background: #fef2f2;
+  }
+
+  .reset-btn.hidden {
+    display: none;
+  }
+
+  /* ── Category sections ── */
+  .cat-section {
+    background: white;
+    border: 1px solid #e7e5e4;
+    border-radius: 0.875rem;
+    padding: 1.25rem 1.5rem;
+    scroll-margin-top: 2rem;
+  }
+
+  .cat-section:target {
+    border-color: #a8a29e;
+    box-shadow: 0 0 0 3px rgba(168, 162, 158, 0.1);
+  }
+
+  .cat-header {
+    margin-bottom: 0.35rem;
+  }
+
+  .cat-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #1c1917;
+    margin: 0;
+  }
+
+  .cat-title a {
+    color: inherit;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .cat-title a:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: #d6d3d1;
+  }
+
+  .cat-count {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: #a8a29e;
+    background: #f5f5f4;
+    padding: 0.1rem 0.4rem;
+    border-radius: 2rem;
+  }
+
+  .cat-desc {
+    font-size: 0.8125rem;
+    color: #78716c;
+    line-height: 1.5;
+    margin: 0 0 0.75rem;
+  }
+
+  .cat-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+
+  .cat-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.375rem 0.625rem;
+    flex-wrap: wrap;
+  }
+
+  @media (min-width: 480px) {
+    .cat-group { flex-wrap: nowrap; }
+  }
+
+  .cat-group-label {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--label-color);
+    background: color-mix(in srgb, var(--label-color) 8%, transparent);
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.3rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+    min-width: 5.5rem;
+    text-align: center;
+  }
+
+  .cat-group-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .cat-tag {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    padding: 0.2rem 0.45rem;
+    border-radius: 0.3rem;
+    background: #f5f5f4;
+    color: #57534e;
+    border: none;
+    cursor: pointer;
+    transition: all 0.12s;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+  }
+
+  .cat-tag:hover {
+    background: #1c1917;
+    color: white;
+  }
+
+  .cat-tag[data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1c1917;
+    color: #e7e5e4;
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    font-weight: 400;
+    padding: 0.3rem 0.55rem;
+    border-radius: 0.375rem;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+
+  .cat-tag[data-tip]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: #1c1917;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .void-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #d97706;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  .cat-tag:hover .void-dot {
+    background: #fbbf24;
+  }
+</style>
+
+<script>
+  import '../scripts/checker';
+</script>
