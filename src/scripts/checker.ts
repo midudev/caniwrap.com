@@ -1,4 +1,4 @@
-import { elements, checkNesting, getAllTags, getDisplayType, VOID_ELEMENTS, type NestingResult } from '../data/html-nesting';
+import { elements, checkNesting, getAllTags, getDisplayType, VOID_ELEMENTS, EASTER_EGGS, TRICKY_COMBOS, getDomCorrection, type NestingResult } from '../data/html-nesting';
 
 const childInput = document.getElementById('child-input') as HTMLInputElement;
 const parentInput = document.getElementById('parent-input') as HTMLInputElement;
@@ -206,6 +206,23 @@ async function copyLink() {
   }
 }
 
+async function shareTIL() {
+  const btn = resultEl.querySelector('.share-til-btn');
+  if (!btn || !selectedChild || !selectedParent) return;
+  const result = checkNesting(selectedChild, selectedParent);
+  const canOrCant = result.valid === 'yes' ? 'can' : result.valid === 'no' ? "can't" : 'might be able to';
+  const emoji = result.valid === 'yes' ? '✅' : result.valid === 'no' ? '🤯' : '🤔';
+  const text = `TIL you ${canOrCant} put a <${selectedChild}> inside a <${selectedParent}> in HTML ${emoji}\n\n${window.location.href}`;
+  try {
+    await navigator.clipboard.writeText(text);
+    const original = btn.innerHTML;
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Copied!`;
+    setTimeout(() => { btn.innerHTML = original; }, 2000);
+  } catch {
+    // Clipboard API unavailable
+  }
+}
+
 const DISPLAY_META: Record<string, { label: string; color: string }> = {
   'inline':       { label: 'Inline',          color: '#0369a1' },
   'block':        { label: 'Block',            color: '#c2410c' },
@@ -259,6 +276,24 @@ function buildElementCard(tag: string, role: 'child' | 'parent') {
   `;
 }
 
+function buildDomDiff(child: string, parent: string): string {
+  const correction = getDomCorrection(child, parent);
+  if (!correction) return '';
+  return `
+    <div class="dom-diff">
+      <div class="dom-diff-panel">
+        <div class="dom-diff-label">What you wrote</div>
+        <pre class="dom-diff-code"><code>${highlightHtml(correction.wrote)}</code></pre>
+      </div>
+      <div class="dom-diff-arrow">→</div>
+      <div class="dom-diff-panel">
+        <div class="dom-diff-label">What the browser sees</div>
+        <pre class="dom-diff-code"><code>${highlightHtml(correction.sees)}</code></pre>
+      </div>
+    </div>
+  `;
+}
+
 function displayResult(result: NestingResult, child: string, parent: string) {
   const cls = result.valid === 'yes' ? 'result-yes' : result.valid === 'no' ? 'result-no' : 'result-depends';
   const icon = result.valid === 'yes' ? '✓' : result.valid === 'no' ? '✗' : '?';
@@ -280,9 +315,19 @@ function displayResult(result: NestingResult, child: string, parent: string) {
       : `<em>${cat}</em>`,
   );
 
+  const comboKey = `${child},${parent}`;
+  const easterEgg = EASTER_EGGS[comboKey];
+  const isTricky = TRICKY_COMBOS.has(comboKey);
+  const domDiff = result.valid === 'no' ? buildDomDiff(child, parent) : '';
+
+  const trickyHtml = isTricky
+    ? `<span class="tricky-badge"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M9 9l.01 0" /><path d="M15 9l.01 0" /><path d="M10 15a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /></svg> Tricky!</span>`
+    : '';
+
   resultEl.innerHTML = `
     <div class="result-card ${cls}">
-      <div class="verdict"><span class="verdict-icon">${icon}</span> ${verdict}</div>
+      <div class="verdict"><span class="verdict-icon">${icon}</span> ${verdict}${trickyHtml}</div>
+      ${easterEgg ? `<div class="easter-egg">${easterEgg}</div>` : ''}
       <p class="explanation">${explanation}</p>
 
       <div class="el-cards">
@@ -290,6 +335,7 @@ function displayResult(result: NestingResult, child: string, parent: string) {
         ${buildElementCard(child, 'child')}
       </div>
 
+      ${domDiff}
       ${result.browserNote ? `<div class="browser-note"><strong>Browser behavior:</strong> ${result.browserNote}</div>` : ''}
       ${
         result.codeExample
@@ -306,6 +352,10 @@ function displayResult(result: NestingResult, child: string, parent: string) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
           Copy link
         </button>
+        <button type="button" class="share-til-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          Share TIL
+        </button>
       </div>
     </div>
   `;
@@ -314,6 +364,8 @@ function displayResult(result: NestingResult, child: string, parent: string) {
 resultEl.addEventListener('click', (e) => {
   if ((e.target as HTMLElement).closest('.copy-link-btn')) {
     copyLink();
+  } else if ((e.target as HTMLElement).closest('.share-til-btn')) {
+    shareTIL();
   }
 });
 
